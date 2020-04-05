@@ -22,8 +22,8 @@ pd.set_option("display.precision", 5)
 # --------------------------- FI LLIBRERIES
 
 # --------------------------- CÀRREGA DE DADES INICIALS
-df_top = pd.read_excel('Case11.xlsx', sheet_name='Topologia')  # dades de la topologia
-df_bus = pd.read_excel('Case11.xlsx', sheet_name='Busos')  # dades dels busos
+df_top = pd.read_excel('IEEE30.xlsx', sheet_name='Topologia')  # dades de la topologia
+df_bus = pd.read_excel('IEEE30.xlsx', sheet_name='Busos')  # dades dels busos
 
 n = df_bus.shape[0]  # nombre de busos, inclou l'slack
 nl = df_top.shape[0]  # nombre de línies
@@ -111,7 +111,7 @@ Yslack = Yseries_slack[:, sl]  # les columnes pertanyents als slack
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 20  # nombre de coeficients de les sèries
+prof = 30  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -357,8 +357,9 @@ error = S_in - S_out  # error final de potències
 # FI CÀLCUL DELS ERRORS
 
 df = pd.DataFrame(np.c_[np.abs(U_sum), np.angle(U_sum), np.abs(U_pa), np.angle(U_pa), np.real(Sig_re), np.real(Sig_im),
-                        s_p, s_n],
-                        columns=['|V| sum', 'A. sum', '|V| Padé', 'A. Padé', 'Sigma re', 'Sigma im', 's+', 's-'])
+                        s_p, s_n, np.abs(error[0, :])],
+                        columns=['|V| sum', 'A. sum', '|V| Padé', 'A. Padé', 'Sigma re', 'Sigma im',
+                                 's+', 's-', 'S error'])
 print(df)
 
 err = max(abs(np.r_[error[0, pqpv]]))  # màxim error de potències
@@ -372,7 +373,7 @@ def vector_s0(vec, s_0):  # per a calcular V(s_0)
         suma += vec[k] * s_0 ** k
     return suma
 
-s0 = [0.01, 0.05, 0.1, 0.2, 0.2]
+s0 = [0.7, 1]
 ng = len(s0)
 
 s0p = []  # producte de les (1-s0)
@@ -398,7 +399,7 @@ for i in range(1, ng):
     Vs0[i] = Vs[i, 0] + s0[i] * Vs[i, 1]
     Vs0p.append(Vs0p[i] * Vs0[i])
 
-prof_pw = prof  # nombre de coeficients de les sèries del P-W
+prof_pw = 30  # nombre de coeficients de les sèries del P-W
 
 Up = np.zeros((prof_pw, npqpv, ng), dtype=complex)  # tensions prima incògnita
 Up_re = np.zeros((prof_pw, npqpv, ng), dtype=float)
@@ -626,11 +627,19 @@ for kg in range(ng - 1):
 
 
 Upfinal = np.zeros(n, dtype=complex)  # tensió prima amb Padé
+Qpfinal = np.zeros(n, dtype=complex)
 
 Upfinal[pqpv] = pade4all(prof_pw - 1, Up[:, :, ng - 2], 1)
 Upfinal[sl] = V_sl
+if npv > 0:
+    Qpfinal[pv] = pade4all(prof_pw - 1, Qp[:, pv_, ng - 2], 1)
+    Qpfinal[sl] = np.nan
 
 Ufinalx = Upfinal[pqpv] * np.prod(Us0[pqpv, :ng - 2], axis=1)  # tensió final
+
+if npv > 0:
+    Qfinalx = Qpfinal[pv] + np.sum(Qs0[pv, :])
+    Qfi[pv] = Qfinalx
 
 Ufinal = np.zeros(n, dtype=complex)
 Ufinal[0] = V_sl[0]
@@ -642,8 +651,7 @@ errorx = S_in - S_out  # error de potències
 err = max(abs(np.r_[errorx[0, pqpv]]))  # màxim error de potències amb P-W
 print('Error P-W amb Padé: ', abs(err))
 
-
-print(Up[:, 9, :])
+print(Qfinalx)
 
 
 """
