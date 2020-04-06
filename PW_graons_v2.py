@@ -114,7 +114,7 @@ Yslack = Yseries_slack[:, sl]  # les columnes pertanyents als slack
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 30  # nombre de coeficients de les sèries
+prof = 60  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -374,7 +374,7 @@ print('Error màxim amb Padé: ' + str(err))
 
 
 # --------------------------- PADÉ-WEIERSTRASS (P-W)
-s0 = [0.7, 0.6, 0.5, 0.4]
+s0 = [0.8, 0.8, 0.9, 0.9, 0.9, 0.9, 0.9]
 ng = len(s0)
 
 s0p = []  # producte de les (1-s0)
@@ -653,7 +653,6 @@ S_in = (Pfi[:] + 1j * Qfi[:])
 errorx = S_in - S_out  # error de potències
 err = max(abs(np.r_[errorx[0, pqpv]]))  # màxim error de potències amb P-W
 print('Error P-W amb Padé: ', abs(err))
-
 
 
 
