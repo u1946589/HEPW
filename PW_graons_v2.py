@@ -114,7 +114,7 @@ Yslack = Yseries_slack[:, sl]  # les columnes pertanyents als slack
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 60  # nombre de coeficients de les sèries
+prof = 30  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -374,7 +374,7 @@ print('Error màxim amb Padé: ' + str(err))
 
 
 # --------------------------- PADÉ-WEIERSTRASS (P-W)
-s0 = [0.8, 0.8, 0.9, 0.9, 0.9, 0.9, 0.9]
+s0 = [0.73, 0.92, 0.8, 1]
 ng = len(s0)
 
 s0p = []  # producte de les (1-s0)
@@ -656,9 +656,37 @@ print('Error P-W amb Padé: ', abs(err))
 
 
 
+#.............  REVISAR CONVERGÈNCIA DELS APROXIMANTS DE PADÉ. PRIMER [0], DESPRÉS [1]... QUE TOT CONVERGEIXI
+
+col = 0  # columna de la qual mirem la convergència dels aproximants de Padé
+
+if col == 0:
+    Us0[pqpv, col] -= pade4all(prof_pw - 3, U[:, pqpv_], s0[col])  # la diferència entre abans i ara
+else:
+    Us0[pqpv, col] -= pade4all(prof_pw - 3, Up[:, pqpv_, col - 1], s0[col])  # la diferència entre abans i ara
+
+#print(Us0[pqpv, col])
+
+tol = 1e-12
+falla = False
+ik = 1
+
+while falla is False and ik < npqpv:
+    if abs(Us0[ik, col]) > tol:
+        falla = True
+    #print(abs(Us0[ik, col]))
+    ik += 1
+
+if falla is True:
+    print('Incorrecte, massa error')
+else:
+    print('Correcte, poc error')
+
+
+
+
 
 """
-
 Upfi = np.sum(Up, axis=0)  # tensió prima amb el sumatori
 
 Upfipa = np.zeros(n, dtype=complex)  # tensió prima amb Padé
