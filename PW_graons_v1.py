@@ -373,7 +373,7 @@ def vector_s0(vec, s_0):  # per a calcular V(s_0)
         suma += vec[k] * s_0 ** k
     return suma
 
-s0 = [0.7, 1]
+s0 = [0.8, 0.5]
 ng = len(s0)
 
 s0p = []  # producte de les (1-s0)
@@ -437,11 +437,11 @@ for kg in range(ng - 1):
     Ybtilde = np.copy(Ybhat)  # matriu simètrica evolucionada
 
     if npq > 0:
-        Ybtilde[pq, pq] += gamma_x * Yshunts_slack[pq] * np.prod(abs(Us0[pq, :kg+1])) ** 2 \
+        Ybtilde[pq, pq] += gamma_x * Yshunts_slack[pq] * np.prod(abs(Us0[pq, :kg+1]), axis=1) ** 2 \
                            - gamma_x * (Pfi[pq] - Qfi[pq] * 1j)
     if npv > 0:
-        Ybtilde[pv, pv] += gamma_x * Yshunts_slack[pv] * np.prod(abs(Us0[pv, :kg+1])) ** 2 \
-                           - gamma_x * Pfi[pv] + np.sum(Qs0[pv, :]) * 1j
+        Ybtilde[pv, pv] += gamma_x * Yshunts_slack[pv] * np.prod(abs(Us0[pv, :kg+1]), axis=1) ** 2 \
+                           - gamma_x * Pfi[pv] + np.sum(Qs0[pv, :], axis=1) * 1j
 
     Ybtilde[:, :] += gamma_x * Yahat[:, :]  # ajustament, part que no s'incrusta amb s'
     Yahat[:, :] = (1 - gamma_x) * Yahat[:, :]  # ajustament, part que no s'incrusta amb s'
@@ -471,17 +471,17 @@ for kg in range(ng - 1):
         valor[pq_] = - prod1[pq_] \
                      - prod2[pq_] \
                      - prod3[pq_] \
-                     - (1 - gamma_x) * Yshunts[pq_] * Up[0, pq_, kg] * np.prod(abs(Us0[pq, :kg + 1])) ** 2 \
+                     - (1 - gamma_x) * Yshunts[pq_] * Up[0, pq_, kg] * np.prod(abs(Us0[pq, :kg + 1]), axis=1) ** 2 \
                      + (1 - gamma_x) * (Pfi[pq] - Qfi[pq] * 1j) * Xp[0, pq_, kg]
 
     if npv > 0:
         valor[pv_] = - prod1[pv_] \
                      - prod2[pv_] \
                      - prod3[pv_] \
-                     - (1 - gamma_x) * Yshunts[pv_] * Up[0, pv_, kg] * np.prod(abs(Us0[pv, :kg + 1])) ** 2 \
+                     - (1 - gamma_x) * Yshunts[pv_] * Up[0, pv_, kg] * np.prod(abs(Us0[pv, :kg + 1]), axis=1) ** 2 \
                      + (1 - gamma_x) * Pfi[pv] * Xp[0, pv_, kg]
     
-        RHS = np.r_[valor.real, valor.imag, W[pv_] / np.prod(abs(Us0[pv, :kg + 1])) ** 2 - 1]
+        RHS = np.r_[valor.real, valor.imag, W[pv_] / np.prod(abs(Us0[pv, :kg + 1]), axis=1) ** 2 - 1]
     else:
         RHS = np.r_[valor.real, valor.imag]
 
@@ -489,7 +489,7 @@ for kg in range(ng - 1):
     if npq > 0:
         gamma[pq_] = gamma_x * (Pfi[pq] - Qfi[pq] * 1j)  # gamma pels busos PQ
     if npv > 0:
-        gamma[pv_] = gamma_x * Pfi[pv] - np.sum(Qs0[pv, :]) * 1j  # gamma pels busos PV
+        gamma[pv_] = gamma_x * Pfi[pv] - np.sum(Qs0[pv, :], axis=1) * 1j  # gamma pels busos PV
 
     Gf = np.real(Ybtildered)  # part real de la matriu simètrica reduïda
     Bf = np.imag(Ybtildered)  # part imaginària de la matriu simètrica reduïda
@@ -517,7 +517,7 @@ for kg in range(ng - 1):
     
     MAT_LU = factorized(MAT.tocsc())  # factoritzar, només cal una vegada
     LHS = MAT_LU(RHS)
-    
+
     Up_re[1, :, kg] = LHS[:npqpv]
     Up_im[1, :, kg] = LHS[npqpv: 2 * npqpv]
     Qp[1, pv_, kg] = LHS[2 * npqpv:]
@@ -569,13 +569,13 @@ for kg in range(ng - 1):
     if npq > 0:
         valor[pq_] = - prod2[pq_] \
                      - prod3[pq_] \
-                     - (1 - gamma_x) * Yshunts[pq_] * Up[1, pq_, kg] * np.prod(abs(Us0[pq, :kg + 1])) ** 2 \
+                     - (1 - gamma_x) * Yshunts[pq_] * Up[1, pq_, kg] * np.prod(abs(Us0[pq, :kg + 1]), axis=1) ** 2 \
                      + (1 - gamma_x) * (Pfi[pq] - Qfi[pq] * 1j) * Xp[1, pq_, kg] \
                      + gamma_x * (Pfi[pq] - Qfi[pq] * 1j) * (- convxv(Xp, Up, pq_, 2, kg))
     if npv > 0:
         valor[pv_] = - prod2[pv_] \
                      - prod3[pv_] \
-                     - (1 - gamma_x) * Yshunts[pv_] * Up[1, pv_, kg] * np.prod(abs(Us0[pv, :kg + 1])) ** 2 \
+                     - (1 - gamma_x) * Yshunts[pv_] * Up[1, pv_, kg] * np.prod(abs(Us0[pv, :kg + 1]), axis=1) ** 2 \
                      + (1 - gamma_x) * Pfi[pv] * Xp[1, pv_, kg] \
                      - convqx(Qp, Xp, pv_, 2, kg) * 1j \
                      + gamma[pv_] * (- convxv(Xp, Up, pv_, 2, kg))
@@ -601,12 +601,12 @@ for kg in range(ng - 1):
     
         if npq > 0:
             valor[pq_] = - prod2[pq_] \
-                         - (1 - gamma_x) * Yshunts[pq_] * Up[c-1, pq_, kg] * np.prod(abs(Us0[pq, :kg + 1])) ** 2 \
+                         - (1 - gamma_x) * Yshunts[pq_] * Up[c-1, pq_, kg] * np.prod(abs(Us0[pq, :kg + 1]), axis=1) ** 2 \
                          + (1 - gamma_x) * (Pfi[pq] - Qfi[pq] * 1j) * Xp[c-1, pq_, kg] \
                          + gamma_x * (Pfi[pq] - Qfi[pq] * 1j) * (- convxv(Xp, Up, pq_, c, kg))
         if npv > 0:
             valor[pv_] = - prod2[pv_] \
-                         - (1 - gamma_x) * Yshunts[pv_] * Up[c-1, pv_, kg] * np.prod(abs(Us0[pv, :kg + 1])) ** 2 \
+                         - (1 - gamma_x) * Yshunts[pv_] * Up[c-1, pv_, kg] * np.prod(abs(Us0[pv, :kg + 1]), axis=1) ** 2 \
                          + (1 - gamma_x) * Pfi[pv] * Xp[c-1, pv_, kg] \
                          - convqx(Qp, Xp, pv_, c, kg) * 1j \
                          + gamma[pv_] * (- convxv(Xp, Up, pv_, c, kg))
@@ -631,14 +631,15 @@ Qpfinal = np.zeros(n, dtype=complex)
 
 Upfinal[pqpv] = pade4all(prof_pw - 1, Up[:, :, ng - 2], 1)
 Upfinal[sl] = V_sl
+
 if npv > 0:
     Qpfinal[pv] = pade4all(prof_pw - 1, Qp[:, pv_, ng - 2], 1)
     Qpfinal[sl] = np.nan
 
-Ufinalx = Upfinal[pqpv] * np.prod(Us0[pqpv, :ng - 2], axis=1)  # tensió final
+Ufinalx = Upfinal[pqpv] * np.prod(Us0[pqpv, :ng - 1], axis=1)  # tensió final, :ng - 2
 
 if npv > 0:
-    Qfinalx = Qpfinal[pv] + np.sum(Qs0[pv, :])
+    Qfinalx = Qpfinal[pv] + np.sum(Qs0[pv, :], axis=1)
     Qfi[pv] = Qfinalx
 
 Ufinal = np.zeros(n, dtype=complex)
@@ -651,7 +652,6 @@ errorx = S_in - S_out  # error de potències
 err = max(abs(np.r_[errorx[0, pqpv]]))  # màxim error de potències amb P-W
 print('Error P-W amb Padé: ', abs(err))
 
-print(Qfinalx)
 
 
 """
