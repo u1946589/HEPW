@@ -22,8 +22,8 @@ pd.set_option("display.precision", 5)
 # --------------------------- FI LLIBRERIES
 
 # --------------------------- CÀRREGA DE DADES INICIALS
-df_top = pd.read_excel('Case11_brazil.xlsx', sheet_name='Topologia')  # dades de la topologia
-df_bus = pd.read_excel('Case11_brazil.xlsx', sheet_name='Busos')  # dades dels busos
+df_top = pd.read_excel('IEEE30.xlsx', sheet_name='Topologia')  # dades de la topologia
+df_bus = pd.read_excel('IEEE30.xlsx', sheet_name='Busos')  # dades dels busos
 
 n = df_bus.shape[0]  # nombre de busos, inclou l'slack
 nl = df_top.shape[0]  # nombre de línies
@@ -96,7 +96,7 @@ vec_Q = vec_Qi[pqpv]
 vec_V = vec_Vi[pqpv]
 
 #............................. AMB LOADING FACTOR .......................
-loading = 0.67
+loading = 1
 vec_P = loading * vec_P
 vec_Q = loading * vec_Q
 #............................. FI LOADING FACTOR ........................
@@ -380,7 +380,7 @@ print('Error màxim amb Padé: ' + str(err))
 
 
 # --------------------------- PADÉ-WEIERSTRASS (P-W)
-s0 = [0.48, 0.5, 1]
+s0 = [0.65, 0.7, 0.7, 1]
 ng = len(s0)
 
 s0p = []  # producte de les (1-s0)
@@ -434,20 +434,24 @@ for kg in range(ng - 1):
         if npv > 0:
             Qs0[pv, kg] = pade4all(prof_pw - 1, Qp[:, pv_, kg - 1], s0[kg])
 
+    Yahat = np.copy(Ytap)  # asimètrica
+    Ybhat = np.copy(Yseries_slack)  # simètrica
+
     for i in range(n):
         if i not in sl:  # per la fila de l'slack no cal fer-ho
             for j in range(n):
-                Yahat[i, j] = Yahat[i, j] * Us0[j, kg] * np.conj(Us0[i, kg])
-                Ybhat[i, j] = Ybhat[i, j] * Us0[j, kg] * np.conj(Us0[i, kg])
+                Yahat[i, j] = Yahat[i, j] * np.prod(Us0[j, :kg+1], axis=0) * np.prod(np.conj(Us0[i, :kg+1]), axis=0)
+                Ybhat[i, j] = Ybhat[i, j] * np.prod(Us0[j, :kg+1], axis=0) * np.prod(np.conj(Us0[i, :kg+1]), axis=0)
 
     gamma_x += s0[kg] * s0p[kg]
+
     Ybtilde = np.copy(Ybhat)  # matriu simètrica evolucionada
 
     if npq > 0:
-        Ybtilde[pq, pq] += gamma_x * Yshunts_slack[pq] * np.prod(abs(Us0[pq, :kg + 1]), axis=1) ** 2 \
+        Ybtilde[pq, pq] += gamma_x * Yshunts_slack[pq] * np.prod(abs(Us0[pq, :kg + 1]) ** 2, axis=1) \
                            - gamma_x * (Pfi[pq] - Qfi[pq] * 1j)
     if npv > 0:
-        Ybtilde[pv, pv] += gamma_x * Yshunts_slack[pv] * np.prod(abs(Us0[pv, :kg + 1]), axis=1) ** 2 \
+        Ybtilde[pv, pv] += gamma_x * Yshunts_slack[pv] * np.prod(abs(Us0[pv, :kg + 1]) ** 2, axis=1) \
                            - gamma_x * Pfi[pv] + np.sum(Qs0[pv, :], axis=1) * 1j
 
     Ybtilde[:, :] += gamma_x * Yahat[:, :]  # ajustament, part que no s'incrusta amb s'
