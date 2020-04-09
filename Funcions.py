@@ -9,7 +9,7 @@ from scipy.sparse import lil_matrix, diags, hstack, vstack
 from scipy.sparse.linalg import spsolve, factorized
 from numpy import zeros, ones, mod, conj, array, r_, linalg, Inf, complex128, c_, r_, angle
 
-@nb.jit
+#@nb.jit
 def pade4all(order, coeff_mat, s):
     """
     Computes the "order" Padè approximant of the coefficients at the approximation point s
@@ -20,23 +20,23 @@ def pade4all(order, coeff_mat, s):
     Returns:
         Padè approximation at s for all the series
     """
-    complex_type = nb.complex128
+    #complex_type = nb.complex128
     nbus = coeff_mat.shape[1]
-    voltages = np.zeros(nbus, complex_type)
+    voltages = np.zeros(nbus, dtype=complex)
     nn = int(order / 2)
     L = nn
     M = nn
     for d in range(nbus):
         rhs = coeff_mat[L + 1:L + M + 1, d]
-        C = np.zeros((L, M), complex_type)
+        C = np.zeros((L, M), dtype=complex)
         for i in range(L):
             k = i + 1
             C[i, :] = coeff_mat[L - M + k:L + k, d]
-        b = np.zeros(rhs.shape[0] + 1, complex_type)
+        b = np.zeros(rhs.shape[0] + 1, dtype=complex)
         x = np.linalg.solve(C, -rhs)  # bn to b1
         b[0] = 1
         b[1:] = x[::-1]
-        a = np.zeros(L + 1, complex_type)
+        a = np.zeros(L + 1, dtype=complex)
         a[0] = coeff_mat[0, d]
         for i in range(L):
             val = complex(0)
@@ -50,6 +50,16 @@ def pade4all(order, coeff_mat, s):
             p += a[i] * s ** i
             q += b[i] * s ** i
         voltages[d] = p / q
+
+        if d == nbus - 1:  # per no mirar tots els busos, només l'últim
+            ppb = np.poly1d(b)
+            ppa = np.poly1d(a)
+            print('imprimeixo Padé')
+            ppbr = ppb.r
+            ppar = ppa.r
+            for i in range(len(ppar)):
+                print(ppar[i])
+
     return voltages
 
 @nb.jit
