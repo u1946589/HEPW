@@ -1,6 +1,8 @@
 #PER NO COPIAR TOTES LES FUNCIONS A L'ARXIU PRINCIPAL. IMPORTAR-LES
 import numpy as np
 import numba as nb
+from mpmath import mp  # per tenir més decimals
+mp.dps = 50
 from numba import jit
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,6 +28,7 @@ def pade4all(order, coeff_mat, s):
     nn = int(order / 2)
     L = nn
     M = nn
+    #print('imprimeixo Padé, fitxer Funcions.py')
     for d in range(nbus):
         rhs = coeff_mat[L + 1:L + M + 1, d]
         C = np.zeros((L, M), dtype=complex)
@@ -51,15 +54,10 @@ def pade4all(order, coeff_mat, s):
             q += b[i] * s ** i
         voltages[d] = p / q
 
-        if d == nbus - 1:  # per no mirar tots els busos, només l'últim
-            ppb = np.poly1d(b)
-            ppa = np.poly1d(a)
-            print('imprimeixo Padé')
-            ppbr = ppb.r
-            ppar = ppa.r
-            for i in range(len(ppar)):
-                print(ppar[i])
-
+        ppb = np.poly1d(b)
+        ppa = np.poly1d(a)
+        ppbr = ppb.r  # arrels, o sigui, pols
+        ppar = ppa.r  # arrels, o sigui, zeros
     return voltages
 
 @nb.jit
@@ -92,8 +90,34 @@ def aitken(U, limit):
     n = limit
     T = np.zeros(n-2, complex_type)
     for i in range(len(T)):
-        T[i] = S(Um, i) - (S(Um, i+1)**2 + S(Um, i)**2 - 2*S(Um, i+1)*S(Um, i)) / (S(Um, i+2) - 2*S(Um, i+1) + S(Um, i))
+        T[i] = S(Um, i+2) - (S(Um, i+1) - S(Um, i))**2 / ((S(Um, i+2) - S(Um, i+1)) - (S(Um, i+1)-S(Um, i)))
+
     return T[-1]  # l'últim element, entenent que és el que millor aproxima
+
+@nb.jit
+def shanks(U, limit):
+    def S(Um, k):
+        suma = 0
+        for m in range(k+1):
+            suma += Um[m]
+        return suma
+    complex_type = nb.complex128
+    Um = U[:limit]  # només els 10 primers coeficients, si no, divideix per 0 i es deteriora
+    n = limit
+    n_trans = 3
+    T = np.zeros((n, n_trans), complex_type)
+    for lk in range(n_trans):
+        for i in range(n-2*lk):
+            if lk == 0:
+                T[i, lk] = S(Um, i+2) - (S(Um, i+1) - S(Um, i))**2 / ((S(Um, i+2) - S(Um, i+1)) - (S(Um, i+1)-S(Um, i)))
+            else:
+                #T[i, lk] = S(T[:, lk-1], i+2) - (S(T[:, lk-1], i+1) - S(T[:, lk-1], i))**2 / \
+                           #((S(T[:, lk-1], i+2) - S(T[:, lk-1], i+1)) - (S(T[:, lk-1], i+1)-S(T[:, lk-1], i)))
+                T[i, lk] = T[i+2, lk - 1] - (T[i+2, lk-1]-T[i+1, lk-1])**2 / \
+                           ((T[i+2, lk-1]-T[i+1, lk-1]) - (T[i+1, lk-1]-T[i, lk-1]))
+
+    print(T[:, 2])
+    return T[n-2*(n_trans-1) -1, n_trans-1]  # l'últim element, entenent que és el que millor aproxima
 
 @nb.jit
 def theta(U_inicial, limit):
