@@ -22,42 +22,93 @@ def pade4all(order, coeff_mat, s):
     Returns:
         Padè approximation at s for all the series
     """
-    #complex_type = nb.complex128
+
     nbus = coeff_mat.shape[1]
     voltages = np.zeros(nbus, dtype=complex)
-    nn = int(order / 2)
-    L = nn
-    M = nn
-    #print('imprimeixo Padé, fitxer Funcions.py')
-    for d in range(nbus):
-        rhs = coeff_mat[L + 1:L + M + 1, d]
-        C = np.zeros((L, M), dtype=complex)
-        for i in range(L):
-            k = i + 1
-            C[i, :] = coeff_mat[L - M + k:L + k, d]
-        b = np.zeros(rhs.shape[0] + 1, dtype=complex)
-        x = np.linalg.solve(C, -rhs)  # bn to b1
-        b[0] = 1
-        b[1:] = x[::-1]
-        a = np.zeros(L + 1, dtype=complex)
-        a[0] = coeff_mat[0, d]
-        for i in range(L):
-            val = complex(0)
-            k = i + 1
-            for j in range(k + 1):
-                val += coeff_mat[k - j, d] * b[j]
-            a[i + 1] = val
-        p = complex(0)
-        q = complex(0)
-        for i in range(L + 1):
-            p += a[i] * s ** i
-            q += b[i] * s ** i
-        voltages[d] = p / q
+    if order % 2 != 0:
+        nn = int(order / 2)
+        print(nn)
+        L = nn
+        M = nn
+        for d in range(nbus):
+            rhs = coeff_mat[L + 1:L + M + 1, d]
+            C = np.zeros((M, M), dtype=complex)
+            for i in range(M):
+                k = i + 1
+                C[i, :] = coeff_mat[L - M + k:L + k, d]
+            b = np.zeros(rhs.shape[0] + 1, dtype=complex)
+            x = np.linalg.solve(C, -rhs)  # bn to b1
+            b[0] = 1
+            b[1:] = x[::-1]
+            a = np.zeros(L + 1, dtype=complex)
+            a[0] = coeff_mat[0, d]
+            for i in range(L):
+                val = complex(0)
+                k = i + 1
+                for j in range(k + 1):
+                    val += coeff_mat[k - j, d] * b[j]
+                a[i + 1] = val
+            p = complex(0)
+            q = complex(0)
 
-        ppb = np.poly1d(b)
-        ppa = np.poly1d(a)
-        ppbr = ppb.r  # arrels, o sigui, pols
-        ppar = ppa.r  # arrels, o sigui, zeros
+            for i in range(len(a)):
+                p += a[i] * s ** i
+            for i in range(len(b)):
+                q += b[i] * s ** i
+            voltages[d] = p / q
+            #ppb = np.poly1d(b)
+            #ppa = np.poly1d(a)
+            #ppbr = ppb.r  # arrels, o sigui, pols
+            #ppar = ppa.r  # arrels, o sigui, zeros
+    else:
+        nn = int(order / 2)
+        L = nn
+        M = nn - 1
+        for d in range(nbus):
+            rhs = coeff_mat[M + 2: 2 * M + 2, d]
+            C = np.zeros((M, M), dtype=complex)
+            for i in range(M):
+                k = i + 1
+                C[i, :] = coeff_mat[L - M + k:L + k, d]
+            b = np.zeros(rhs.shape[0] + 1, dtype=complex)
+            x = np.linalg.solve(C, -rhs)  # de bn a b1, en aquest ordre
+            b[0] = 1
+            b[1:] = x[::-1]
+            a = np.zeros(L + 1, dtype=complex)
+            a[0] = coeff_mat[0, d]
+            print(a[0])
+            for i in range(1, L):
+                val = complex(0)
+                for j in range(i + 1):
+                    val += coeff_mat[i - j, d] * b[j]
+                a[i] = val
+            val = complex(0)
+            for j in range(L):
+                val += coeff_mat[M - j + 1, d] * b[j]
+            a[L] = val
+            p = complex(0)
+            q = complex(0)
+
+            for i in range(len(a)):
+                p += a[i] * s ** i
+            for i in range(len(b)):
+                q += b[i] * s ** i
+            voltages[d] = p / q
+
+            """
+            for i in range(L):
+                val = complex(0)
+                k = i + 1
+                for j in range(k + 1):
+                    val += coeff_mat[k - j, d] * b[j]
+                a[i + 1] = val
+            p = complex(0)
+            q = complex(0)
+            for i in range(L + 1):
+                p += a[i] * s ** i
+                q += b[i] * s ** i
+            voltages[d] = p / q
+            """
     return voltages
 
 @nb.jit
@@ -116,7 +167,6 @@ def shanks(U, limit):
                 T[i, lk] = T[i+2, lk - 1] - (T[i+2, lk-1]-T[i+1, lk-1])**2 / \
                            ((T[i+2, lk-1]-T[i+1, lk-1]) - (T[i+1, lk-1]-T[i, lk-1]))
 
-    print(T[:, 2])
     return T[n-2*(n_trans-1) -1, n_trans-1]  # l'últim element, entenent que és el que millor aproxima
 
 @nb.jit
@@ -146,6 +196,47 @@ def theta(U_inicial, limit):
     else:
         return mat[0, n]
 
+"""
+@nb.jit
+def theta(U_inicial, limit):
+    def S(Um, k):
+        suma = 0
+        for m in range(k+1):
+            suma = suma + Um[m]
+        return suma
+    complex_type = nb.complex128
+    n = limit
+    Um = np.zeros(n, complex_type)
+    Um[:] = U_inicial[:limit]
+    mat = np.zeros((n, n+1), complex_type)
+    for i in range(n):
+        mat[i, 1] = S(Um, i)  # plena de sumes parcials
+
+    #col_perd = int((n-2)/2) - 1
+    col_perd = int((n - 1) / 2) - 1
+
+    for j in range(2, n+1-col_perd):
+        if j % 2 == 0:
+            for i in range(n+1-j-int((j-1)/2)):
+                mat[i, j] = mat[i+1, j-2] + 1 / (mat[i+1, j-1] - mat[i, j-1])
+        else:
+            for i in range(n+1-j-int((j-1)/2)):
+                mat[i, j] = mat[i+1, j-2] + ((mat[i+2, j-2] - mat[i+1, j-2]) * (mat[i+2, j-1] - mat[i+1, j-1])) / ((mat[i+2, j-1] - mat[i+1, j-1]) - (mat[i+1, j-1] - mat[i, j-1]))
+
+    #print(mat)
+    if n % 2 == 0 and col_perd % 2 == 0:
+        #print(mat[4, n - col_perd - 3])
+        return mat[4, n - col_perd - 3]
+    elif n % 2 == 0 and col_perd % 2 != 0:
+        #print(mat[2, n - col_perd - 2])
+        return mat[2, n - col_perd - 2]
+    elif n % 2 != 0 and col_perd % 2 == 0:
+        #print(mat[3, n - col_perd - 2])
+        return mat[3, n - col_perd - 2]
+    else:
+        #print(mat[1, n - col_perd - 1])
+        return mat[1, n - col_perd - 1]
+"""
 @nb.jit
 def rho(U, limit):  # veure si cal tallar U, o sigui, agafar per exemple els 10 primers coeficients
     def S(Um, k):
@@ -166,6 +257,7 @@ def rho(U, limit):  # veure si cal tallar U, o sigui, agafar per exemple els 10 
         return mat[0, n-1]
     else:
         return mat[0, n]
+
 
 @nb.jit
 def epsilon2(U, limit):
