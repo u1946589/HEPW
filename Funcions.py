@@ -12,22 +12,13 @@ from scipy.sparse.linalg import spsolve, factorized
 from numpy import zeros, ones, mod, conj, array, r_, linalg, Inf, complex128, c_, r_, angle
 
 #@nb.jit
+
 def pade4all(order, coeff_mat, s):
-    """
-    Computes the "order" Padè approximant of the coefficients at the approximation point s
-    Arguments:
-        coeff_mat: coefficient matrix (order, buses)
-        order:  order of the series
-        s: point of approximation
-    Returns:
-        Padè approximation at s for all the series
-    """
 
     nbus = coeff_mat.shape[1]
     voltages = np.zeros(nbus, dtype=complex)
     if order % 2 != 0:
         nn = int(order / 2)
-        print(nn)
         L = nn
         M = nn
         for d in range(nbus):
@@ -76,7 +67,6 @@ def pade4all(order, coeff_mat, s):
             b[1:] = x[::-1]
             a = np.zeros(L + 1, dtype=complex)
             a[0] = coeff_mat[0, d]
-            print(a[0])
             for i in range(1, L):
                 val = complex(0)
                 for j in range(i + 1):
@@ -94,22 +84,9 @@ def pade4all(order, coeff_mat, s):
             for i in range(len(b)):
                 q += b[i] * s ** i
             voltages[d] = p / q
-
-            """
-            for i in range(L):
-                val = complex(0)
-                k = i + 1
-                for j in range(k + 1):
-                    val += coeff_mat[k - j, d] * b[j]
-                a[i + 1] = val
-            p = complex(0)
-            q = complex(0)
-            for i in range(L + 1):
-                p += a[i] * s ** i
-                q += b[i] * s ** i
-            voltages[d] = p / q
-            """
     return voltages
+
+
 
 @nb.jit
 def eta(U_inicial, limit):
@@ -387,6 +364,46 @@ def Sigma_funcO(coeff_matU, coeff_matX, order, V_slack):
     for d in range(nbus):
         a = coeff_matU[1:2 * M + 2, d]
         b = coeff_matX[0:2 * M + 1, d]
+        C = np.zeros((2 * M + 1, 2 * M + 1), dtype=complex)
+        for i in range(2 * M + 1):
+            if i < M:
+                C[1 + i:, i] = a[:2 * M - i]
+            else:
+                C[i - M:, i] = - b[:3 * M - i + 1]
+        lhs = np.linalg.solve(C, -a)
+        sigmes[d] = np.sum(lhs[M:])/(np.sum(lhs[:M]) + 1)
+    return sigmes
+
+def SigmaX(coeff_matU, coeff_matX, order, V_slack):
+    # pensada per la formulació original, o per la pròpia quan V[0]=1 sempre
+    """
+    :param coeff_matU: array with voltage coefficients
+    :param order: should be prof - 1
+    :param V_slack: slack bus voltage vector. Must contain only 1 slack bus
+    :return: sigma complex value
+    """
+    #complex_type = nb.complex128
+    if len(V_slack) > 1:
+        print('Sigma values may not be correct')
+    V0 = V_slack[0]
+    coeff_A = np.copy(coeff_matU)
+    coeff_B= np.copy(coeff_matX)
+    coeff_A[0, :] = 1
+    for i in range(1, coeff_matU.shape[0]):
+        coeff_A[i, :] = coeff_matU[i, :] - (V0 - 1) * coeff_A[i-1, :]
+    coeff_B[0, :] = 1
+    for i in range(1, coeff_matX.shape[0]):
+        coeff_B[i, :] = coeff_matX[i, :] + (V0 - 1) * coeff_matX[i-1, :]
+
+    nbus = coeff_matU.shape[1]
+    sigmes = np.zeros(nbus, dtype=complex)
+    if order % 2 == 0:
+        M = int(order / 2) - 1
+    else:
+        M = int(order / 2)
+    for d in range(nbus):
+        a = coeff_A[1:2 * M + 2, d]
+        b = coeff_B[0:2 * M + 1, d]
         C = np.zeros((2 * M + 1, 2 * M + 1), dtype=complex)
         for i in range(2 * M + 1):
             if i < M:
