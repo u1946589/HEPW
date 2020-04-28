@@ -24,8 +24,8 @@ pd.set_option("display.precision", 5)
 # --------------------------- FI LLIBRERIES
 
 # --------------------------- CÀRREGA DE DADES INICIALS
-df_top = pd.read_excel('IEEE30.xlsx', sheet_name='Topologia')  # dades de la topologia
-df_bus = pd.read_excel('IEEE30.xlsx', sheet_name='Busos')  # dades dels busos
+df_top = pd.read_excel('IEEE118.xlsx', sheet_name='Topologia')  # dades de la topologia
+df_bus = pd.read_excel('IEEE118.xlsx', sheet_name='Busos')  # dades dels busos
 
 n = df_bus.shape[0]  # nombre de busos, inclou l'slack
 nl = df_top.shape[0]  # nombre de línies
@@ -98,7 +98,7 @@ vec_Q = vec_Qi[pqpv]
 vec_V = vec_Vi[pqpv]
 
 #............................. AMB LOADING FACTOR .......................
-loading = 1  # atenció a posar-lo a 1 després!!
+loading = 1.0  # atenció a posar-lo a 1 després!!
 vec_P = loading * vec_P
 vec_Q = loading * vec_Q
 #............................. FI LOADING FACTOR ........................
@@ -127,7 +127,7 @@ Yslack = Yseries_slack[:, sl]  # les columnes pertanyents als slack
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 30  # nombre de coeficients de les sèries
+prof = 60  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
