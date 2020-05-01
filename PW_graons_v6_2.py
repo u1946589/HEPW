@@ -2,7 +2,7 @@
 # CONTACT:  santiago.penate.vera@gmail.com, u1946589@campus.udg.edu
 # thanks to Llorenç Fanals Batllori for his help at coding
 # només per a simular el pegase 2869, on el shunt té real i imaginari
-# segurament li falta alguna cosa perquè l'he estirat del PW_graons_v6. No fer-lo servir amb el P-W
+# segurament li falta alguna cosa perquè l'he estirat del PW_graons_v4_2. No fer-lo servir amb el P-W
 
 # --------------------------- LLIBRERIES
 import numpy as np
@@ -380,6 +380,7 @@ print(df)
 err = max(abs(np.r_[error[0, pqpv]]))  # màxim error de potències
 print('Error màxim amb Padé: ' + str(err))
 
+"""
 
 # --------------------------- PADÉ-WEIERSTRASS (P-W)
 s0 = [0.32, 0.4, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 1]
@@ -699,7 +700,7 @@ else:
 
 
 
-"""
+
 
 
 # ALTRES:
@@ -721,7 +722,7 @@ Bmm = coo_matrix(MATx)  # passar a dispersa
 density = Bmm.getnnz() / np.prod(Bmm.shape) * 100  # convertir a percentual
 #print('Densitat: ' + str(density) + ' %')
 
-
+"""
 # .......................DOMB-SYKES ........................
 
 bb = np. zeros((prof, npqpv), dtype=complex)
@@ -740,9 +741,14 @@ bus = 12  # gràfic Domb-Sykes d'aquest bus
 plt.plot(vec_1n[3:len(U)-1], abs(bb[3:len(U)-1, bus]), 'ro ', markersize=2)
 plt.show()
 
+
+print(1/max(abs(bb[-2, :])))
+print(1/min(abs(bb[-2, :])))
+
 # print(bb[3:len(U) - 2, 28])
 # n_ord = abs(bb[len(U) - 2, 28]) - vec_1n[len(U) - 2] * (abs(bb[len(U) - 2, 28]) - abs(bb[len(U) - 3, 28])) / (vec_1n[len(U) - 2] - vec_1n[len(U) - 3])
 # print('radi: ' + str(1 / n_ord))
+
 
 # .......................GRÀFIC SIGMA ........................
 a=[]
@@ -763,4 +769,3 @@ plt.xlabel('Sigma re')
 plt.title('Gràfic Sigma')
 plt.show()
 
-"""

@@ -8,6 +8,8 @@
 # --------------------------- LLIBRERIES
 import numpy as np
 import numba as nb
+from mpmath import mp
+mp.dps = 50
 from numba import jit
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -38,8 +40,10 @@ def conv(A, B, c, i, tipus):
 
 
 # --------------------------- CÀRREGA DE DADES INICIALS
-df_top = pd.read_excel('IEEE30.xlsx', sheet_name='Topologia')  # dades de topologia
-df_bus = pd.read_excel('IEEE30.xlsx', sheet_name='Busos')  # dades dels busos
+
+
+df_top = pd.read_excel('Nord Pool.xlsx', sheet_name='Topologia')  # dades de topologia
+df_bus = pd.read_excel('Nord Pool.xlsx', sheet_name='Busos')  # dades dels busos
 
 n = df_bus.shape[0]  # nombre de busos, inclou l'slack
 nl = df_top.shape[0]  # nombre de línies
@@ -111,37 +115,59 @@ vec_P = vec_Pi[pqpv]  # agafar la part del vector necessària
 vec_Q = vec_Qi[pqpv]
 vec_V = vec_Vi[pqpv]
 
+#............................. AMB LOADING FACTOR .......................
+loading = 1  # atenció a posar-lo a 1 després!!
+vec_P = loading * vec_P
+vec_Q = loading * vec_Q
+#............................. FI LOADING FACTOR ........................
+
 vecx_shunts = np.zeros((n, 1), dtype=complex)  # vector amb admitàncies shunt
 for i in range(nl):  # de la pestanya topologia
-    vecx_shunts[df_top.iloc[i, 0], 0] = vecx_shunts[df_top.iloc[i, 0], 0] + df_top.iloc[
-        i, 4] * -1j  # signe canviat
-    vecx_shunts[df_top.iloc[i, 1], 0] = vecx_shunts[df_top.iloc[i, 1], 0] + df_top.iloc[
-        i, 4] * -1j  # signe canviat
+    vecx_shunts[df_top.iloc[i, 0], 0] = vecx_shunts[df_top.iloc[i, 0], 0] + df_top.iloc[i, 4] * -1j  # signe canviat
+    vecx_shunts[df_top.iloc[i, 1], 0] = vecx_shunts[df_top.iloc[i, 1], 0] + df_top.iloc[i, 4] * -1j  # signe canviat
+
+# PER QUAN NO ÉS LA PEGASE:
 for i in range(n):  # de la pestanya busos
     if df_bus.iloc[i, 6] != 0:
         vecx_shunts[df_bus.iloc[i, 0], 0] += df_bus.iloc[i, 6] * -1j  # signe canviat
+
+"""
+#PER LA PEGASE. COMENTAR/DESCOMENTAR UN O ALTRE:
+for i in range(n):  # de la pestanya busos
+    vecx_shunts[df_bus.iloc[i, 0], 0] += df_bus.iloc[i, 6] * -1  # part real
+    vecx_shunts[df_bus.iloc[i, 0], 0] += df_bus.iloc[i, 7] * -1j  # part imaginària
+"""
 
 vec_shunts = vecx_shunts[pqpv]
 
 df = pd.DataFrame(data=np.c_[vecx_shunts.imag, vec_Pi, vec_Qi, vec_Vi],
                   columns=['Ysh', 'P0', 'Q0', 'V0'])
-print(df)
+#print(df)
 
 Yslx = np.zeros((n, n), dtype=complex)  # admitàncies que connecten a l'slack
 
 for i in range(nl):
-    if df_top.iloc[i, 0] in sl:  # si està a la primera columna
-        Yslx[df_top.iloc[i, 1], df_top.iloc[i, 0]] = 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) + \
-                                                     Yslx[df_top.iloc[i, 1], df_top.iloc[i, 0]]
-    elif df_top.iloc[i, 1] in sl:  # si està a la segona columna
-        Yslx[df_top.iloc[i, 0], df_top.iloc[i, 1]] = 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) + \
-                                                     Yslx[df_top.iloc[i, 0], df_top.iloc[i, 1]]
+    tap = df_top.iloc[i, 5]
+    if tap == 1:
+        if df_top.iloc[i, 0] in sl:  # si està a la primera columna
+            Yslx[df_top.iloc[i, 1], df_top.iloc[i, 0]] = 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) + \
+                                                         Yslx[df_top.iloc[i, 1], df_top.iloc[i, 0]]
+        elif df_top.iloc[i, 1] in sl:  # si està a la segona columna
+            Yslx[df_top.iloc[i, 0], df_top.iloc[i, 1]] = 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) + \
+                                                         Yslx[df_top.iloc[i, 0], df_top.iloc[i, 1]]
+    else:
+        if df_top.iloc[i, 0] in sl:  # si està a la primera columna
+            Yslx[df_top.iloc[i, 1], df_top.iloc[i, 0]] += +1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) / (np.conj(tap))
+
+        elif df_top.iloc[i, 1] in sl:  # si està a la segona columna
+            Yslx[df_top.iloc[i, 0], df_top.iloc[i, 1]] += +1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) / (tap)
+
 Ysl1 = Yslx[:, sl]
 Ysl = Ysl1[pqpv, :]
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 30  # nombre de coeficients de les sèries
+prof = 60  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -277,25 +303,34 @@ U_eps = np.zeros(n, dtype=complex)  # tensió amb èpsilons de Wynn
 U_rho = np.zeros(n, dtype=complex)  # tensió amb rhos
 U_theta = np.zeros(n, dtype=complex)  # tensió amb thetas
 U_eta = np.zeros(n, dtype=complex)  # tensió amb etas
+U_shanks = np.zeros(n, dtype=complex)  # tensió amb shanks
+Q_sum = np.zeros(n, dtype=complex)
 Q_eps = np.zeros(n, dtype=complex)
 Q_ait = np.zeros(n, dtype=complex)
 Q_rho = np.zeros(n, dtype=complex)
 Q_theta = np.zeros(n, dtype=complex)
 Q_eta = np.zeros(n, dtype=complex)
+Q_shanks = np.zeros(n, dtype=complex)
 Sig_re = np.zeros(n, dtype=complex)  # part real de sigma
 Sig_im = np.zeros(n, dtype=complex)  # part imaginària de sigma
 
 Ybus = Yseries - diags(vecx_shunts[:, 0])  # matriu d'admitàncies total
+#Ybus = Yseries_real - diags(vecx_shunts[:, 0])  # matriu d'admitàncies total
 
-from Funcions import pade4all, epsilon2, eta, theta, aitken, Sigma_funcO, rho, thevenin_funcX2
+from Funcions import pade4all, epsilon2, eta, theta, aitken, Sigma_funcO, rho, thevenin_funcX2, shanks, SigmaX
 
 # SUMA
 U_sum[pqpv] = np.sum(U[:, pqpv_], axis=0)
 U_sum[sl] = V_sl
+if npq > 0:
+    Q_sum[pq] = vec_Q[pq_]
+if npv > 0:
+    Q_sum[pv] = np.sum(Q[:, pv_], axis=0)
+Q_sum[sl] = np.nan
 # FI SUMA
 
 # PADÉ
-Upa = pade4all(prof-1, U[:, :], 1)
+Upa = pade4all(prof, U[:, :], 1)
 if npv > 0:
     Qpa = pade4all(prof-1, Q[:, pv_], 1)  # trobar reactiva amb Padé
 U_pa[sl] = V_sl
@@ -309,28 +344,40 @@ Pfi[sl] = np.nan
 Qfi[sl] = np.nan
 # FI PADÉ
 
-limit = 10  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
+limit = 8  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
 if limit > prof:
     limit = prof - 1
 
 # SIGMA
 Ux1 = np.copy(U)
-Sig_re[pqpv] = np.real(Sigma_funcO(Ux1, X, prof-1, V_sl))
-Sig_im[pqpv] = np.imag(Sigma_funcO(Ux1, X, prof-1, V_sl))
+Sig_re[pqpv] = np.real(SigmaX(Ux1, X, prof-1, V_sl))
+Sig_im[pqpv] = np.imag(SigmaX(Ux1, X, prof-1, V_sl))
 Sig_re[sl] = np.nan
 Sig_im[sl] = np.nan
 s_p = 1 / (2 * (abs(np.real(Sig_re) + np.real(Sig_im) * 1j) - np.real(Sig_re)))
 s_n = - 1 / (2 * (abs(np.real(Sig_re) + np.real(Sig_im) * 1j) + np.real(Sig_re)))
+arrel = np.zeros(n, dtype=float)
+arrel[sl] = np.nan
+arrel[pqpv] = 0.25 + np.abs(Sig_re[pqpv]) - np.abs(Sig_im[pqpv]) ** 2
+print(arrel)
+for i in range(len(Sig_re)):
+    print(np.real(Sig_re[i]))
 # FI SIGMA
+
+
 
 # THÉVENIN
 Ux2 = np.copy(U)
-for i in range(npqpv):
-    U_th[i] = thevenin_funcX2(Ux2[:limit, i], X[:limit, i], 1)
-U_th[pqpv] = U_th[pqpv_]
-U_th[sl] = V_sl
+#for i in range(npqpv):
+print(pqpv)
+for i in pq:
+    U_th[i] = thevenin_funcX2(Ux2[:limit, i-nsl_counted[i]], X[:limit, i-nsl_counted[i]], 1)
+
+#U_th[pqpv] = U_th[pqpv_]
+#U_th[sl] = V_sl
 # FI THÉVENIN
 
+"""
 # DELTES D'AITKEN
 Ux3 = np.copy(U)
 Qx3 = np.copy(Q)
@@ -401,20 +448,88 @@ U_eta[sl] = V_sl
 Q_eta[sl] = np.nan
 # FI ETA
 
+# SHANKS
+Ux8 = np.copy(U)
+Qx8 = np.copy(Q)
+for i in range(npqpv):
+    U_shanks[i] = shanks(Ux8[:, i], limit)
+    if i in pq_:
+        Q_shanks[i + nsl_counted[i]] = vec_Q[i]
+    elif i in pv_:
+        Q_shanks[i + nsl_counted[i]] = shanks(Qx8[:, i], limit)
+U_shanks[pqpv] = U_shanks[pqpv_]
+U_shanks[sl] = V_sl
+Q_shanks[sl] = np.nan
+# FI SHANKS
+"""
+
+
+# ERRORS
 S_out = np.asarray(U_pa) * np.conj(np.asarray(np.dot(Ybus.todense(), U_pa)))  # computat amb tensions de Padé
 S_in = (Pfi[:] + 1j * Qfi[:])
 error = S_in - S_out  # error final de potències
 
+
+"""
+S_out_eps = np.asarray(U_eps) * np.conj(np.asarray(np.dot(Ybus.todense(), U_eps)))
+S_in_eps = (Pfi[:] + 1j * Q_eps[:])
+error_eps = S_in_eps - S_out_eps
+
+S_out_ait = np.asarray(U_ait) * np.conj(np.asarray(np.dot(Ybus.todense(), U_ait)))
+S_in_ait = (Pfi[:] + 1j * Q_ait[:])
+error_ait = S_in_ait - S_out_ait
+
+S_out_rho = np.asarray(U_rho) * np.conj(np.asarray(np.dot(Ybus.todense(), U_rho)))
+S_in_rho = (Pfi[:] + 1j * Q_rho[:])
+error_rho = S_in_rho - S_out_rho
+
+S_out_theta = np.asarray(U_theta) * np.conj(np.asarray(np.dot(Ybus.todense(), U_theta)))
+S_in_theta = (Pfi[:] + 1j * Q_theta[:])
+error_theta = S_in_theta - S_out_theta
+
+S_out_eta = np.asarray(U_eta) * np.conj(np.asarray(np.dot(Ybus.todense(), U_eta)))
+S_in_eta = (Pfi[:] + 1j * Q_eta[:])
+error_eta = S_in_eta - S_out_eta
+
+S_out_shanks = np.asarray(U_shanks) * np.conj(np.asarray(np.dot(Ybus.todense(), U_shanks)))
+S_in_shanks = (Pfi[:] + 1j * Q_shanks[:])
+error_shanks = S_in_shanks - S_out_shanks
+"""
+S_out_sum = np.asarray(U_sum) * np.conj(np.asarray(np.dot(Ybus.todense(), U_sum)))
+S_in_sum = (Pfi[:] + 1j * Q_sum[:])
+error_sum = S_in_sum - S_out_sum
+# FI ERRORS
+
+"""
 df = pd.DataFrame(np.c_[np.abs(U_sum), np.angle(U_sum), np.abs(U_pa), np.angle(U_pa), np.abs(U_th),
                         np.abs(U_eps), np.angle(U_eps), np.abs(U_ait), np.angle(U_ait), np.abs(U_rho),
                         np.angle(U_rho), np.abs(U_theta), np.angle(U_theta), np.abs(U_eta), np.angle(U_eta),
-                        np.real(Pfi), np.real(Qfi), np.abs(error[0, :]), np.real(Sig_re), np.real(Sig_im), s_p, s_n],
+                        np.abs(U_shanks), np.angle(U_shanks), np.real(Pfi), np.real(Qfi), np.abs(error[0, :]),
+                        np.real(Sig_re), np.real(Sig_im), s_p, s_n],
                         columns=['|V| sum', 'A. sum', '|V| Padé', 'A. Padé', '|V| Thévenin', '|V| Epsilon',
                                  'A. Epsilon', '|V| Aitken', 'A. Aitken', '|V| Rho', 'A. Rho', '|V| Theta', 'A. Theta',
-                                 '|V| Eta', 'A. Eta', 'P', 'Q', 'S error', 'Sigma re', 'Sigma im', 's+', 's-'])
+                                 '|V| Eta', 'A. Eta', '|V| Shanks', 'A. Shanks','P', 'Q', 'S error', 'Sigma re',
+                                 'Sigma im', 's+', 's-'])
+"""
+df = pd.DataFrame(np.c_[np.abs(U_sum), np.angle(U_sum), np.abs(U_pa), np.angle(U_pa), np.abs(U_th),
+                        np.abs(U_eps), np.angle(U_eps), np.abs(U_ait), np.angle(U_ait), np.abs(U_rho),
+                        np.angle(U_rho), np.abs(U_theta), np.angle(U_theta), np.abs(U_eta), np.angle(U_eta),
+                        np.abs(U_shanks), np.angle(U_shanks), np.real(Pfi), np.real(Qfi), np.abs(error_sum[0, :]),
+                        np.real(Sig_re), np.real(Sig_im)],
+                        columns=['|V| sum', 'A. sum', '|V| Padé', 'A. Padé', '|V| Thévenin', '|V| Epsilon',
+                                 'A. Epsilon', '|V| Aitken', 'A. Aitken', '|V| Rho', 'A. Rho', '|V| Theta', 'A. Theta',
+                                 '|V| Eta', 'A. Eta', '|V| Shanks', 'A. Shanks','P', 'Q', 'S error', 'Sigma re',
+                                 'Sigma im'])
+
+
 print(df)
 err = max(abs(np.r_[error[0, pqpv]]))  # màxim error de potències
-print('Error màxim amb Padé: ' + str(err))
+#print('Error màxim amb Padé: ' + str(err))
+print(err)
+
+#print(max(abs(np.r_[error_theta[0, pqpv]])))
+
+
 
 # ALTRES:
 # .......................VISUALITZACIÓ DE LA MATRIU ........................
@@ -432,22 +547,29 @@ f.savefig("matriu_imatge.pdf", bbox_inches='tight')
 
 Bmm = coo_matrix(MAT)  # passar a dispersa
 density = Bmm.getnnz() / np.prod(Bmm.shape) * 100  # convertir a percentual
-print('Densitat: ' + str(density) + ' %')
+#print('Densitat: ' + str(density) + ' %')
 
 # .......................DOMB-SYKES ........................
 bb = np. zeros((prof, npqpv), dtype=complex)
 for j in range(npqpv):
     for i in range(3, len(U) - 1):
         bb[i, j] = (U[i, j]) / (U[i-1, j])  # el Domb-Sykes més bàsic
+        #bb[i, j] = np.abs(np.sqrt((U[i + 1, j] * U[i - 1, j] - U[i, j] ** 2) / (U[i, j] * U[i - 2, j] - U[i - 1, j] ** 2)))
 
 vec_1n = np. zeros(prof)
 for i in range(3, prof):
     vec_1n[i] = i
+    #vec_1n[i] = 1 / i
 
-bus = 0
+bus = 5
 
 plt.plot(vec_1n[3:len(U)-1], abs(bb[3:len(U)-1, bus]), 'ro ', markersize=2)
 plt.show()
+
+print(abs(bb[-2, :]))
+print(1/max(abs(bb[-2, :])))
+print(1/min(abs(bb[-2, :])))
+
 
 # .......................GRÀFIC SIGMA ........................
 a=[]
@@ -467,3 +589,4 @@ plt.ylabel('Sigma im')
 plt.xlabel('Sigma re')
 plt.title('Gràfic Sigma')
 plt.show()
+

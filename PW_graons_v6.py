@@ -24,8 +24,8 @@ pd.set_option("display.precision", 5)
 # --------------------------- FI LLIBRERIES
 
 # --------------------------- CÀRREGA DE DADES INICIALS
-df_top = pd.read_excel('IEEE118.xlsx', sheet_name='Topologia')  # dades de la topologia
-df_bus = pd.read_excel('IEEE118.xlsx', sheet_name='Busos')  # dades dels busos
+df_top = pd.read_excel('Case11_brazil.xlsx', sheet_name='Topologia')  # dades de la topologia
+df_bus = pd.read_excel('Case11_brazil.xlsx', sheet_name='Busos')  # dades dels busos
 
 n = df_bus.shape[0]  # nombre de busos, inclou l'slack
 nl = df_top.shape[0]  # nombre de línies
@@ -98,7 +98,7 @@ vec_Q = vec_Qi[pqpv]
 vec_V = vec_Vi[pqpv]
 
 #............................. AMB LOADING FACTOR .......................
-loading = 1.0  # atenció a posar-lo a 1 després!!
+loading = 0.01  # atenció a posar-lo a 1 després!!
 vec_P = loading * vec_P
 vec_Q = loading * vec_Q
 #............................. FI LOADING FACTOR ........................
@@ -127,7 +127,7 @@ Yslack = Yseries_slack[:, sl]  # les columnes pertanyents als slack
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 60  # nombre de coeficients de les sèries
+prof = 120  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -741,29 +741,33 @@ Bmm = coo_matrix(MATx)  # passar a dispersa
 density = Bmm.getnnz() / np.prod(Bmm.shape) * 100  # convertir a percentual
 print('Densitat: ' + str(density) + ' %')
 
-
+"""
 # .......................DOMB-SYKES ........................
 
 bb = np. zeros((prof, npqpv), dtype=complex)
 for j in range(npqpv):
-    for i in range(3, len(U) - 1):
-        #bb[i, j] = np. abs(np.sqrt((U[i+1, j] * U[i-1, j] - U[i, j] ** 2) / (U[i, j] * U[i-2, j] - U[i-1, j] ** 2)))
-        bb[i, j] = (U[i, j]) / (U[i-1, j])
+    for i in range(3, len(U)-1):
+        bb[i, j] = np. abs(np.sqrt((U[i+1, j] * U[i-1, j] - U[i, j] ** 2) / (U[i, j] * U[i-2, j] - U[i-1, j] ** 2)))
+        #bb[i, j] = (Q[i, j]) / (Q[i-1, j])
+        #print(bb[i, j])
 
 vec_1n = np. zeros(prof)
 for i in range(3, prof):
     #vec_1n[i] = 1 / i
     vec_1n[i] = i
 
-bus = 12  # gràfic Domb-Sykes d'aquest bus
+bus = 1  # gràfic Domb-Sykes d'aquest bus
 
 plt.plot(vec_1n[3:len(U)-1], abs(bb[3:len(U)-1, bus]), 'ro ', markersize=2)
 plt.show()
 
+print(1/max(abs(bb[-2, :])))
+print(1/min(abs(bb[-2, :])))
+
 # print(bb[3:len(U) - 2, 28])
 # n_ord = abs(bb[len(U) - 2, 28]) - vec_1n[len(U) - 2] * (abs(bb[len(U) - 2, 28]) - abs(bb[len(U) - 3, 28])) / (vec_1n[len(U) - 2] - vec_1n[len(U) - 3])
 # print('radi: ' + str(1 / n_ord))
-"""
+
 
 # .......................GRÀFIC SIGMA ........................
 a=[]
@@ -783,4 +787,8 @@ plt.ylabel('Sigma im')
 plt.xlabel('Sigma re')
 plt.title('Gràfic Sigma')
 plt.show()
+
+# ....................EXTRA..................
+print('a')
+
 
