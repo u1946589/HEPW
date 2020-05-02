@@ -123,13 +123,13 @@ Yshunts_slack[:] = Yshunts[:]
 
 df = pd.DataFrame(data=np.c_[Yshunts.imag, vec_Pi, vec_Qi, vec_Vi],
                   columns=['Ysh', 'P0', 'Q0', 'V0'])
-print(df)
+#print(df)
 
 Yslack = Yseries_slack[:, sl]  # les columnes pertanyents als slack
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 120  # nombre de coeficients de les sèries
+prof = 60  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -356,7 +356,7 @@ Pfi[sl] = np.nan
 Qfi[sl] = np.nan
 # FI PADÉ
 
-limit = 10  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
+limit = 60  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
 if limit > prof:
     limit = prof - 1
 
@@ -387,6 +387,18 @@ print(arrel)
 for i in range(len(Sig_re)):
     print(np.real(Sig_im[i]))
 # FI SIGMA
+
+# THÉVENIN, revisar!!!!!!!!!!!
+Ux2 = np.copy(U)
+#for i in range(npqpv):
+print(pqpv)
+for i in pq:
+    U_th[i] = thevenin_funcX2(Ux2[:limit, i-nsl_counted[i]], X[:limit, i-nsl_counted[i]], 1)
+
+print(abs(U_th))
+#U_th[pqpv] = U_th[pqpv_]
+#U_th[sl] = V_sl
+# FI THÉVENIN
 
 
 # CÀLCUL DELS ERRORS

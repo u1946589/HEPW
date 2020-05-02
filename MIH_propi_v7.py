@@ -163,7 +163,7 @@ Ysl = Ysl1[pqpv, :]
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 60  # nombre de coeficients de les sèries
+prof = 120  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -340,7 +340,7 @@ Pfi[sl] = np.nan
 Qfi[sl] = np.nan
 # FI PADÉ
 
-limit = 8  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
+limit = 80  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
 if limit > prof:
     limit = prof - 1
 
