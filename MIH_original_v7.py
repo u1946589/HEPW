@@ -20,9 +20,11 @@ pd.set_option('display.width', 2000)
 pd.set_option("display.precision", 5)
 # --------------------------- FI LLIBRERIES
 
+
+
 # --------------------------- CÀRREGA DE DADES INICIALS
-df_top = pd.read_excel('Case11_brazil.xlsx', sheet_name='Topologia')  # dades de la topologia
-df_bus = pd.read_excel('Case11_brazil.xlsx', sheet_name='Busos')  # dades dels busos
+df_top = pd.read_excel('IEEE118.xlsx', sheet_name='Topologia')  # dades de la topologia
+df_bus = pd.read_excel('IEEE118.xlsx', sheet_name='Busos')  # dades dels busos
 
 n = df_bus.shape[0]  # nombre de busos, inclou l'slack
 nl = df_top.shape[0]  # nombre de línies
@@ -46,15 +48,15 @@ for i in range(nl):  # emplenar matriu quan hi ha trafo de relació variable
     if tap != 1 or ang_tap != 0:
         Ytap[df_top.iloc[i, 0], df_top.iloc[i, 0]] += 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) / \
                                                       (tap * np.conj(tap)) - 1 / (
-                                                                  df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j)
+                                                              df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j)
         Ytap[df_top.iloc[i, 1], df_top.iloc[i, 1]] += 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) \
                                                       - 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j)
         Ytap[df_top.iloc[i, 0], df_top.iloc[i, 1]] += - 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) / \
                                                       (np.conj(tap)) + 1 / (
-                                                                  df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j)
+                                                              df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j)
         Ytap[df_top.iloc[i, 1], df_top.iloc[i, 0]] += - 1 / (df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j) / \
                                                       (tap) + 1 / (
-                                                                  df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j)
+                                                              df_top.iloc[i, 2] + df_top.iloc[i, 3] * 1j)
 
 vec_Pi = np.zeros(n, dtype=float)  # dades de potència activa
 vec_Qi = np.zeros(n, dtype=float)  # dades de potència reactiva
@@ -97,11 +99,11 @@ vec_P = vec_Pi[pqpv]  # agafar la part del vector necessària
 vec_Q = vec_Qi[pqpv]
 vec_V = vec_Vi[pqpv]
 
-#............................. AMB LOADING FACTOR .......................
-loading = 0.5  # atenció a posar-lo a 1 després!!
+# ............................. AMB LOADING FACTOR .......................
+loading = 1.0  # atenció a posar-lo a 1 després!!
 vec_P = loading * vec_P
 vec_Q = loading * vec_Q
-#............................. FI LOADING FACTOR ........................
+# ............................. FI LOADING FACTOR ........................
 
 Yshunts = np.zeros(n, dtype=complex)
 
@@ -117,19 +119,19 @@ for i in range(n):  # de la pestanya busos
     Yshunts[df_bus.iloc[i, 0]] += df_bus.iloc[i, 6] * 1
     Yshunts[df_bus.iloc[i, 0]] += df_bus.iloc[i, 7] * 1j
 
-
 Yshunts_slack = np.zeros(n, dtype=complex)  # inclou els busos slack
 Yshunts_slack[:] = Yshunts[:]
 
 df = pd.DataFrame(data=np.c_[Yshunts.imag, vec_Pi, vec_Qi, vec_Vi],
                   columns=['Ysh', 'P0', 'Q0', 'V0'])
-#print(df)
+# print(df)
 
 Yslack = Yseries_slack[:, sl]  # les columnes pertanyents als slack
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 60  # nombre de coeficients de les sèries
+# prof = 10  # nombre de coeficients de les sèries
+prof = 60
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -204,7 +206,8 @@ valor[pv_] = - prod[pv_] \
 
 RHS = np.r_[valor.real, valor.imag, W[pv_] - 1]  # amb l'equació del mòdul dels PV
 
-VRE = coo_matrix((2 * U_re[0, pv_], (np.arange(npv), pv_)), shape=(npv, npqpv)).tocsc()  # matriu dispersa COO a compr.
+VRE = coo_matrix((2 * U_re[0, pv_], (np.arange(npv), pv_)),
+                 shape=(npv, npqpv)).tocsc()  # matriu dispersa COO a compr.
 VIM = coo_matrix((2 * U_im[0, pv_], (np.arange(npv), pv_)), shape=(npv, npqpv)).tocsc()
 XIM = coo_matrix((-X_im[0, pv_], (pv_, np.arange(npv))), shape=(npqpv, npv)).tocsc()
 XRE = coo_matrix((X_re[0, pv_], (pv_, np.arange(npv))), shape=(npqpv, npv)).tocsc()
@@ -230,7 +233,6 @@ X_im[1, :] = X[1, :].imag
 # .......................FI TERMES [1] .......................
 
 # .......................CONVOLUCIONS .......................
-
 
 def convqx(q, x, i, cc):
     suma = 0
@@ -330,16 +332,24 @@ Q_ait = np.zeros(n, dtype=complex)
 Q_rho = np.zeros(n, dtype=complex)
 Q_theta = np.zeros(n, dtype=complex)
 Q_eta = np.zeros(n, dtype=complex)
+U_shanks = np.zeros(n, dtype=complex)  # tensió amb shanks
+Q_sum = np.zeros(n, dtype=complex)
+Q_shanks = np.zeros(n, dtype=complex)
 Sig_re = np.zeros(n, dtype=complex)  # part real de sigma
 Sig_im = np.zeros(n, dtype=complex)  # part imaginària de sigma
 
 Ybus = Yseries_slack + diags(Yshunts_slack) + Ytap  # matriu d'admitàncies total
 
-from Funcions import pade4all, epsilon2, eta, theta, aitken, Sigma_funcO, rho, thevenin_funcX2, SigmaX  # funcions
+from Funcions import pade4all, epsilon2, eta, theta, aitken, Sigma_funcO, rho, thevenin_funcX2, SigmaX, \
+    shanks  # funcions
 
 # SUMA
 U_sum[pqpv] = np.sum(U[:, pqpv_], axis=0)
 U_sum[sl] = V_sl
+if npq > 0:
+    Q_sum[pq] = vec_Q[pq_]
+if npv > 0:
+    Q_sum[pv] = np.sum(Q[:, pv_], axis=0)
 # FI SUMA
 
 # PADÉ
@@ -356,7 +366,7 @@ Pfi[sl] = np.nan
 Qfi[sl] = np.nan
 # FI PADÉ
 
-limit = 60  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
+limit = prof  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
 if limit > prof:
     limit = prof - 1
 
@@ -383,44 +393,173 @@ s_n = - 1 / (2 * (abs(np.real(Sig_re) + np.real(Sig_im) * 1j) + np.real(Sig_re))
 arrel = np.zeros(n, dtype=float)
 arrel[sl] = np.nan
 arrel[pqpv] = 0.25 + np.abs(Sig_re[pqpv]) - np.abs(Sig_im[pqpv]) ** 2
-print(arrel)
-for i in range(len(Sig_re)):
-    print(np.real(Sig_im[i]))
+# print(arrel)
+# for i in range(len(Sig_re)):
+# print(np.real(Sig_im[i]))
 # FI SIGMA
 
 # THÉVENIN, revisar!!!!!!!!!!!
 Ux2 = np.copy(U)
-#for i in range(npqpv):
-print(pqpv)
+
 for i in pq:
-    U_th[i] = thevenin_funcX2(Ux2[:limit, i-nsl_counted[i]], X[:limit, i-nsl_counted[i]], 1)
+    U_th[i] = thevenin_funcX2(Ux2[:limit, i - nsl_counted[i]], X[:limit, i - nsl_counted[i]], 1)
 
-print(abs(U_th))
-#U_th[pqpv] = U_th[pqpv_]
-#U_th[sl] = V_sl
+# print(abs(U_th))
+
+# U_th[pqpv] = U_th[pqpv_]
+# U_th[sl] = V_sl
 # FI THÉVENIN
+"""
+# DELTES D'AITKEN
+Ux3 = np.copy(U)
+Qx3 = np.copy(Q)
+for i in range(npqpv):
+    U_ait[i] = aitken(Ux3[:, i], limit)
+    if i in pq_:
+        Q_ait[i + nsl_counted[i]] = vec_Q[i]
+    elif i in pv_:
+        Q_ait[i + nsl_counted[i]] = aitken(Qx3[:, i], limit)
+U_ait[pqpv] = U_ait[pqpv_]
+U_ait[sl] = V_sl
+Q_ait[sl] = np.nan
+# FI DELTES D'AITKEN
 
+# EPSILONS DE WYNN
+Ux4 = np.copy(U)
+Qx4 = np.copy(Q)
+for i in range(npqpv):
+    U_eps[i] = epsilon2(Ux4[:, i], limit)
+    if i in pq_:
+        Q_eps[i + nsl_counted[i]] = vec_Q[i]
+    elif i in pv_:
+        Q_eps[i + nsl_counted[i]] = epsilon2(Qx4[:, i], limit)
+U_eps[pqpv] = U_eps[pqpv_]
+U_eps[sl] = V_sl
+Q_eps[sl] = np.nan
+# FI EPSILONS DE WYNN
 
-# CÀLCUL DELS ERRORS
+# RHO
+Ux5 = np.copy(U)
+Qx5 = np.copy(Q)
+for i in range(npqpv):
+    U_rho[i] = rho(Ux5[:, i], limit)
+    if i in pq_:
+        Q_rho[i + nsl_counted[i]] = vec_Q[i]
+    elif i in pv_:
+        Q_rho[i + nsl_counted[i]] = rho(Qx5[:, i], limit)
+U_rho[pqpv] = U_rho[pqpv_]
+U_rho[sl] = V_sl
+Q_rho[sl] = np.nan
+# FI RHO
+"""
+"""
+# THETA
+Ux6 = np.copy(U)
+Qx6 = np.copy(Q)
+for i in range(npqpv):
+    U_theta[i] = theta(Ux6[:, i], limit)
+    if i in pq_:
+        Q_theta[i + nsl_counted[i]] = vec_Q[i]
+    elif i in pv_:
+        Q_theta[i + nsl_counted[i]] = theta(Qx6[:, i], limit)
+U_theta[pqpv] = U_theta[pqpv_]
+U_theta[sl] = V_sl
+Q_theta[sl] = np.nan
+# FI THETA
+
+# ETA
+Ux7 = np.copy(U)
+Qx7 = np.copy(Q)
+for i in range(npqpv):
+    U_eta[i] = eta(Ux7[:, i], limit)
+    if i in pq_:
+        Q_eta[i + nsl_counted[i]] = vec_Q[i]
+    elif i in pv_:
+        Q_eta[i + nsl_counted[i]] = eta(Qx7[:, i], limit)
+U_eta[pqpv] = U_eta[pqpv_]
+U_eta[sl] = V_sl
+Q_eta[sl] = np.nan
+# FI ETA
+
+# SHANKS
+Ux8 = np.copy(U)
+Qx8 = np.copy(Q)
+for i in range(npqpv):
+    U_shanks[i] = shanks(Ux8[:, i], limit)
+    if i in pq_:
+        Q_shanks[i + nsl_counted[i]] = vec_Q[i]
+    elif i in pv_:
+        Q_shanks[i + nsl_counted[i]] = shanks(Qx8[:, i], limit)
+U_shanks[pqpv] = U_shanks[pqpv_]
+U_shanks[sl] = V_sl
+Q_shanks[sl] = np.nan
+# FI SHANKS
+"""
+
+# ERRORS
 S_out = np.asarray(U_pa) * np.conj(np.asarray(np.dot(Ybus, U_pa)))  # computat amb tensions de Padé
 S_in = (Pfi[:] + 1j * Qfi[:])
 error = S_in - S_out  # error final de potències
+"""
+S_out_eps = np.asarray(U_eps) * np.conj(np.asarray(np.dot(Ybus, U_eps)))
+S_in_eps = (Pfi[:] + 1j * Q_eps[:])
+error_eps = S_in_eps - S_out_eps
+
+S_out_ait = np.asarray(U_ait) * np.conj(np.asarray(np.dot(Ybus, U_ait)))
+S_in_ait = (Pfi[:] + 1j * Q_ait[:])
+error_ait = S_in_ait - S_out_ait
+
+S_out_rho = np.asarray(U_rho) * np.conj(np.asarray(np.dot(Ybus, U_rho)))
+S_in_rho = (Pfi[:] + 1j * Q_rho[:])
+error_rho = S_in_rho - S_out_rho
+
+S_out_theta = np.asarray(U_theta) * np.conj(np.asarray(np.dot(Ybus, U_theta)))
+S_in_theta = (Pfi[:] + 1j * Q_theta[:])
+error_theta = S_in_theta - S_out_theta
+"""
+"""
+S_out_eta = np.asarray(U_eta) * np.conj(np.asarray(np.dot(Ybus, U_eta)))
+S_in_eta = (Pfi[:] + 1j * Q_eta[:])
+error_eta = S_in_eta - S_out_eta
+
+S_out_shanks = np.asarray(U_shanks) * np.conj(np.asarray(np.dot(Ybus, U_shanks)))
+S_in_shanks = (Pfi[:] + 1j * Q_shanks[:])
+error_shanks = S_in_shanks - S_out_shanks
+"""
+S_out_sum = np.asarray(U_sum) * np.conj(np.asarray(np.dot(Ybus, U_sum)))
+S_in_sum = (Pfi[:] + 1j * Q_sum[:])
+error_sum = S_in_sum - S_out_sum
+# FI ERRORS
 
 # FI CÀLCUL DELS ERRORS
 
-df = pd.DataFrame(np.c_[np.abs(U_sum), np.angle(U_sum), np.abs(U_pa), np.angle(U_pa), np.real(Sig_re), np.real(Sig_im),
-                        s_p, s_n, np.abs(error[0, :])],
-                  columns=['|V| sum', 'A. sum', '|V| Padé', 'A. Padé', 'Sigma re', 'Sigma im',
-                           's+', 's-', 'S error'])
-print(df)
+df = pd.DataFrame(
+    np.c_[np.abs(U_sum), np.angle(U_sum), np.abs(U_pa), np.angle(U_pa), np.real(Sig_re), np.real(Sig_im),
+          s_p, s_n, np.abs(error[0, :])],
+    columns=['|V| sum', 'A. sum', '|V| Padé', 'A. Padé', 'Sigma re', 'Sigma im',
+             's+', 's-', 'S error'])
+# print(df)
 
 err = max(abs(np.r_[error[0, pqpv]]))  # màxim error de potències
-print('Error màxim amb Padé: ', str(err))
+# print('Error màxim amb Padé: ', str(err))
 
+print(err)
 
-"""
+# print(max(abs(np.r_[error[0, pqpv]])))
+# print(max(abs(np.r_[error_ait[0, pqpv]])))
+# print(max(abs(np.r_[error_shanks[0, pqpv]])))
+# print(max(abs(np.r_[error_rho[0, pqpv]])))
+# print(max(abs(np.r_[error_eps[0, pqpv]])))
+# print(max(abs(np.r_[error_theta[0, pqpv]])))
+# print(max(abs(np.r_[error_eta[0, pqpv]])))
+# print(max(abs(np.r_[error_sum[0, pqpv]])))
+# print(error_sum)
+# print(U_sum)
+
 # --------------------------- PADÉ-WEIERSTRASS (P-W)
-s0 = [0.3, 0.33, 1]
+# s0 = [0.6, 0.65, 0.68, 0.72, 0.9, 1]
+s0 = [0.5, 1]
+
 ng = len(s0)
 
 s0p = []  # producte de les (1-s0)
@@ -466,9 +605,9 @@ Ybhat = np.copy(Yseries_slack)  # simètrica
 for kg in range(ng - 1):
     Us0[sl, kg] = Vs0[kg]
     if kg == 0:
-        Us0[pqpv, kg] = pade4all(prof_pw - 1, U[:, pqpv_], s0[kg])  # emplenar la tensió dels busos incògnita
+        Us0[pqpv, kg] = pade4all(prof - 1, U[:, pqpv_], s0[kg])  # emplenar la tensió dels busos incògnita
         if npv > 0:
-            Qs0[pv, kg] = pade4all(prof_pw - 1, Q[:, pv_], s0[kg])  # emplenar la reactiva dels busos PV
+            Qs0[pv, kg] = pade4all(prof - 1, Q[:, pv_], s0[kg])  # emplenar la reactiva dels busos PV
     else:
         Us0[pqpv, kg] = pade4all(prof_pw - 1, Up[:, pqpv_, kg - 1], s0[kg])
         if npv > 0:
@@ -480,8 +619,10 @@ for kg in range(ng - 1):
     for i in range(n):
         if i not in sl:  # per la fila de l'slack no cal fer-ho
             for j in range(n):
-                Yahat[i, j] = Yahat[i, j] * np.prod(Us0[j, :kg+1], axis=0) * np.prod(np.conj(Us0[i, :kg+1]), axis=0)
-                Ybhat[i, j] = Ybhat[i, j] * np.prod(Us0[j, :kg+1], axis=0) * np.prod(np.conj(Us0[i, :kg+1]), axis=0)
+                Yahat[i, j] = Yahat[i, j] * np.prod(Us0[j, :kg + 1], axis=0) * np.prod(np.conj(Us0[i, :kg + 1]),
+                                                                                       axis=0)
+                Ybhat[i, j] = Ybhat[i, j] * np.prod(Us0[j, :kg + 1], axis=0) * np.prod(np.conj(Us0[i, :kg + 1]),
+                                                                                       axis=0)
 
     gamma_x += s0[kg] * s0p[kg]
 
@@ -679,10 +820,13 @@ for kg in range(ng - 1):
         Xp_im[c, :, kg] = np.imag(Xp[c, :, kg])
 
 Upfinal = np.zeros(n, dtype=complex)  # tensió prima amb Padé
+Xpfinal = np.zeros(n, dtype=complex)
 Qpfinal = np.zeros(n, dtype=complex)
 
 Upfinal[pqpv] = pade4all(prof_pw - 1, Up[:, pqpv_, ng - 2], 1)
 Upfinal[sl] = V_sl[0]
+Xpfinal[pqpv] = pade4all(prof_pw - 1, Xp[:, pqpv_, ng - 2], 1)
+Xpfinal[sl] = 1 / np.conj(V_sl[0])
 
 if npv > 0:
     Qpfinal[pv] = pade4all(prof_pw - 1, Qp[:, pv_, ng - 2], 1)
@@ -702,26 +846,32 @@ S_out = np.asarray(Ufinal) * np.conj(np.asarray(np.dot(Ybus, Ufinal)))
 S_in = (Pfi[:] + 1j * Qfi[:])
 errorx = S_in - S_out  # error de potències
 err = max(abs(np.r_[errorx[0, pqpv]]))  # màxim error de potències amb P-W
-print('Error P-W amb Padé: ', abs(err))
+# print('Error P-W amb Padé: ', abs(err))
+print(err)
 
-#print('U final: ' + str(Ufinal))
+# print('U final: ' + str(Ufinal))
 
-#print(Ybus)
+# print(Ybus)
 
-#.............  REVISAR CONVERGÈNCIA DELS APROXIMANTS DE PADÉ. PRIMER [0], DESPRÉS [1]... QUE TOT CONVERGEIXI
+# .............  REVISAR CONVERGÈNCIA DELS APROXIMANTS DE PADÉ. PRIMER [0], DESPRÉS [1]... QUE TOT CONVERGEIXI
 col = ng - 2  # columna de la qual mirem la convergència dels aproximants de Padé
 
+Us0x = np.copy(Us0)
+
 if col == 0:
-    Us0[pqpv, col] -= pade4all(prof_pw - 3, U[:, pqpv_], s0[col])  # la diferència entre abans i ara
+    Us0[pqpv, col] -= pade4all(prof - 3, U[:, pqpv_], s0[col])  # la diferència entre abans i ara
 else:
     Us0[pqpv, col] -= pade4all(prof_pw - 3, Up[:, pqpv_, col - 1], s0[col])  # la diferència entre abans i ara
+
+print(abs(Us0[:, col]))
 
 tol = 1e-10
 falla = False
 ik = 1
 
 while falla is False and ik < npqpv:
-    if abs(Us0[ik, col]) > tol:
+    if abs(Us0[ik, col]) > tol and ik not in sl:
+        print(ik)
         falla = True
     ik += 1
 
@@ -730,12 +880,9 @@ if falla is True:
 else:
     print('Correcte, poc error')
 
+# print(S_in)
 
-
-#print(S_in)
-
-
-
+"""
 # ALTRES:
 # .......................VISUALITZACIÓ DE LA MATRIU ........................
 from pylab import *
@@ -754,8 +901,8 @@ f.savefig("figura.pdf", bbox_inches='tight')
 Bmm = coo_matrix(MATx)  # passar a dispersa
 density = Bmm.getnnz() / np.prod(Bmm.shape) * 100  # convertir a percentual
 print('Densitat: ' + str(density) + ' %')
-
 """
+
 # .......................DOMB-SYKES ........................
 
 bb = np. zeros((prof, npqpv), dtype=complex)
@@ -775,8 +922,9 @@ bus = 1  # gràfic Domb-Sykes d'aquest bus
 plt.plot(vec_1n[3:len(U)-1], abs(bb[3:len(U)-1, bus]), 'ro ', markersize=2)
 plt.show()
 
-print(1/max(abs(bb[-2, :])))
-print(1/min(abs(bb[-2, :])))
+#print(1/max(abs(bb[-2, :])))
+#print(1/min(abs(bb[-2, :])))
+#print(1/(abs(bb[-2, 28])))
 
 # print(bb[3:len(U) - 2, 28])
 # n_ord = abs(bb[len(U) - 2, 28]) - vec_1n[len(U) - 2] * (abs(bb[len(U) - 2, 28]) - abs(bb[len(U) - 3, 28])) / (vec_1n[len(U) - 2] - vec_1n[len(U) - 3])
@@ -784,12 +932,12 @@ print(1/min(abs(bb[-2, :])))
 
 
 # .......................GRÀFIC SIGMA ........................
-a=[]
-b=[]
-c=[]
+a = []
+b = []
+c = []
 
 x = np.linspace(-0.25, 1, 1000)
-y = np.sqrt(0.25+x)
+y = np.sqrt(0.25 + x)
 a.append(x)
 b.append(y)
 c.append(-y)
@@ -803,6 +951,6 @@ plt.title('Gràfic Sigma')
 plt.show()
 
 # ....................EXTRA..................
-print(Ybus)
+# print(Ybus)
 
-
+# """
