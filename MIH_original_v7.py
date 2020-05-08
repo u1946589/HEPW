@@ -23,8 +23,8 @@ pd.set_option("display.precision", 5)
 
 
 # --------------------------- CÀRREGA DE DADES INICIALS
-df_top = pd.read_excel('IEEE118.xlsx', sheet_name='Topologia')  # dades de la topologia
-df_bus = pd.read_excel('IEEE118.xlsx', sheet_name='Busos')  # dades dels busos
+df_top = pd.read_excel('Case11_brazil.xlsx', sheet_name='Topologia')  # dades de la topologia
+df_bus = pd.read_excel('Case11_brazil.xlsx', sheet_name='Busos')  # dades dels busos
 
 n = df_bus.shape[0]  # nombre de busos, inclou l'slack
 nl = df_top.shape[0]  # nombre de línies
@@ -366,7 +366,7 @@ Pfi[sl] = np.nan
 Qfi[sl] = np.nan
 # FI PADÉ
 
-limit = prof  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
+limit = 20  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
 if limit > prof:
     limit = prof - 1
 
@@ -399,10 +399,10 @@ arrel[pqpv] = 0.25 + np.abs(Sig_re[pqpv]) - np.abs(Sig_im[pqpv]) ** 2
 # FI SIGMA
 
 # THÉVENIN, revisar!!!!!!!!!!!
-Ux2 = np.copy(U)
+#Ux2 = np.copy(U)
 
-for i in pq:
-    U_th[i] = thevenin_funcX2(Ux2[:limit, i - nsl_counted[i]], X[:limit, i - nsl_counted[i]], 1)
+#for i in pq:
+    #U_th[i] = thevenin_funcX2(Ux2[:limit, i - nsl_counted[i]], X[:limit, i - nsl_counted[i]], 1)
 
 # print(abs(U_th))
 
@@ -543,7 +543,7 @@ df = pd.DataFrame(
 err = max(abs(np.r_[error[0, pqpv]]))  # màxim error de potències
 # print('Error màxim amb Padé: ', str(err))
 
-print(err)
+#)
 
 # print(max(abs(np.r_[error[0, pqpv]])))
 # print(max(abs(np.r_[error_ait[0, pqpv]])))
@@ -557,8 +557,8 @@ print(err)
 # print(U_sum)
 
 # --------------------------- PADÉ-WEIERSTRASS (P-W)
-# s0 = [0.6, 0.65, 0.68, 0.72, 0.9, 1]
-s0 = [0.5, 1]
+s0 = [0.5, 0.05, 1]
+#s0 = [0.65, 0.9, 1]
 
 ng = len(s0)
 
@@ -585,7 +585,7 @@ for i in range(1, ng):
     Vs0[i] = Vs[i, 0] + s0[i] * Vs[i, 1]
     Vs0p.append(Vs0p[i] * Vs0[i])
 
-prof_pw = 30  # nombre de coeficients de les sèries del P-W
+prof_pw = prof  # nombre de coeficients de les sèries del P-W
 
 Up = np.zeros((prof_pw, npqpv, ng), dtype=complex)  # tensions prima incògnita
 Up_re = np.zeros((prof_pw, npqpv, ng), dtype=float)
@@ -719,7 +719,6 @@ for kg in range(ng - 1):
     Xp_re[1, :, kg] = np.real(Xp[1, :, kg])
     Xp_im[1, :, kg] = np.imag(Xp[1, :, kg])
 
-
     # .......................FI TERMES [1] ........................
 
     # .......................CONVOLUCIONS ........................
@@ -819,6 +818,7 @@ for kg in range(ng - 1):
         Xp_re[c, :, kg] = np.real(Xp[c, :, kg])
         Xp_im[c, :, kg] = np.imag(Xp[c, :, kg])
 
+
 Upfinal = np.zeros(n, dtype=complex)  # tensió prima amb Padé
 Xpfinal = np.zeros(n, dtype=complex)
 Qpfinal = np.zeros(n, dtype=complex)
@@ -847,7 +847,7 @@ S_in = (Pfi[:] + 1j * Qfi[:])
 errorx = S_in - S_out  # error de potències
 err = max(abs(np.r_[errorx[0, pqpv]]))  # màxim error de potències amb P-W
 # print('Error P-W amb Padé: ', abs(err))
-print(err)
+#print(err)
 
 # print('U final: ' + str(Ufinal))
 
@@ -863,15 +863,12 @@ if col == 0:
 else:
     Us0[pqpv, col] -= pade4all(prof_pw - 3, Up[:, pqpv_, col - 1], s0[col])  # la diferència entre abans i ara
 
-print(abs(Us0[:, col]))
-
 tol = 1e-10
 falla = False
 ik = 1
 
 while falla is False and ik < npqpv:
     if abs(Us0[ik, col]) > tol and ik not in sl:
-        print(ik)
         falla = True
     ik += 1
 
@@ -954,3 +951,6 @@ plt.show()
 # print(Ybus)
 
 # """
+
+
+print(err)

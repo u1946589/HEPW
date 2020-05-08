@@ -42,8 +42,8 @@ def conv(A, B, c, i, tipus):
 # --------------------------- CÀRREGA DE DADES INICIALS
 
 
-df_top = pd.read_excel('Case11_brazil.xlsx', sheet_name='Topologia')  # dades de topologia
-df_bus = pd.read_excel('Case11_brazil.xlsx', sheet_name='Busos')  # dades dels busos
+df_top = pd.read_excel('Nord Pool.xlsx', sheet_name='Topologia')  # dades de topologia
+df_bus = pd.read_excel('Nord Pool.xlsx', sheet_name='Busos')  # dades dels busos
 
 n = df_bus.shape[0]  # nombre de busos, inclou l'slack
 nl = df_top.shape[0]  # nombre de línies
@@ -116,14 +116,14 @@ vec_Q = vec_Qi[pqpv]
 vec_V = vec_Vi[pqpv]
 
 #............................. AMB LOADING FACTOR .......................
-loading = 0.5  # atenció a posar-lo a 1 després!!
+loading = 1.8  # atenció a posar-lo a 1 després!!
 vec_P = loading * vec_P
 vec_Q = loading * vec_Q
 #............................. FI LOADING FACTOR ........................
 
 vecx_shunts = np.zeros((n, 1), dtype=complex)  # vector amb admitàncies shunt
 for i in range(nl):  # de la pestanya topologia
-    if df_top.iloc[i, 5] == 1:
+    if df_top.iloc[i, 5] == 1:pr
         vecx_shunts[df_top.iloc[i, 0], 0] += df_top.iloc[i, 4] * -1j  # signe canviat
         vecx_shunts[df_top.iloc[i, 1], 0] += df_top.iloc[i, 4] * -1j  # signe canviat
     else:
@@ -163,7 +163,7 @@ Ysl = Ysl1[pqpv, :]
 # --------------------------- FI CÀRREGA DE DADES INICIALS
 
 # --------------------------- PREPARACIÓ DE LA IMPLEMENTACIÓ
-prof = 120  # nombre de coeficients de les sèries
+prof = 30  # nombre de coeficients de les sèries
 
 U = np.zeros((prof, npqpv), dtype=complex)  # sèries de voltatges
 U_re = np.zeros((prof, npqpv), dtype=float)  # part real de voltatges
@@ -245,6 +245,7 @@ else:
                 valor.imag]
     MAT = vstack((hstack((G, -B)),
                   hstack((B, G))), format='csc')
+
 
 MAT_LU = factorized(MAT.tocsc())  # matriu factoritzada (només cal fer-ho una vegada)
 LHS = MAT_LU(RHS)  # obtenir vector d'incògnites
@@ -340,7 +341,7 @@ Pfi[sl] = np.nan
 Qfi[sl] = np.nan
 # FI PADÉ
 
-limit = 80  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
+limit = prof - 1  # límit per tal que els mètodes recurrents no treballin amb tots els coeficients
 if limit > prof:
     limit = prof - 1
 
@@ -355,9 +356,9 @@ s_n = - 1 / (2 * (abs(np.real(Sig_re) + np.real(Sig_im) * 1j) + np.real(Sig_re))
 arrel = np.zeros(n, dtype=float)
 arrel[sl] = np.nan
 arrel[pqpv] = 0.25 + np.abs(Sig_re[pqpv]) - np.abs(Sig_im[pqpv]) ** 2
-print(arrel)
-for i in range(len(Sig_re)):
-    print(np.real(Sig_re[i]))
+#(arrel)
+#for i in range(len(Sig_re)):
+    #print(np.real(Sig_re[i]))
 # FI SIGMA
 
 
@@ -365,7 +366,7 @@ for i in range(len(Sig_re)):
 # THÉVENIN
 Ux2 = np.copy(U)
 #for i in range(npqpv):
-print(pqpv)
+#print(pqpv)
 for i in pq:
     U_th[i] = thevenin_funcX2(Ux2[:limit, i-nsl_counted[i]], X[:limit, i-nsl_counted[i]], 1)
 
@@ -506,7 +507,7 @@ df = pd.DataFrame(np.c_[np.abs(U_sum), np.angle(U_sum), np.abs(U_pa), np.angle(U
                                  'A. Epsilon', '|V| Aitken', 'A. Aitken', '|V| Rho', 'A. Rho', '|V| Theta', 'A. Theta',
                                  '|V| Eta', 'A. Eta', '|V| Shanks', 'A. Shanks','P', 'Q', 'S error', 'Sigma re',
                                  'Sigma im', 's+', 's-'])
-"""
+
 df = pd.DataFrame(np.c_[np.abs(U_sum), np.angle(U_sum), np.abs(U_pa), np.angle(U_pa), np.abs(U_th),
                         np.abs(U_eps), np.angle(U_eps), np.abs(U_ait), np.angle(U_ait), np.abs(U_rho),
                         np.angle(U_rho), np.abs(U_theta), np.angle(U_theta), np.abs(U_eta), np.angle(U_eta),
@@ -517,13 +518,20 @@ df = pd.DataFrame(np.c_[np.abs(U_sum), np.angle(U_sum), np.abs(U_pa), np.angle(U
                                  '|V| Eta', 'A. Eta', '|V| Shanks', 'A. Shanks','P', 'Q', 'S error', 'Sigma re',
                                  'Sigma im'])
 
-
-print(df)
+"""
+#(df)
 err = max(abs(np.r_[error[0, pqpv]]))  # màxim error de potències
 #print('Error màxim amb Padé: ' + str(err))
-print(err)
+#print(err)
 
+#print(max(abs(np.r_[error[0, pqpv]])))
+#print(max(abs(np.r_[error_ait[0, pqpv]])))
+#print(max(abs(np.r_[error_shanks[0, pqpv]])))
+#print(max(abs(np.r_[error_rho[0, pqpv]])))
+#print(max(abs(np.r_[error_eps[0, pqpv]])))
 #print(max(abs(np.r_[error_theta[0, pqpv]])))
+#print(max(abs(np.r_[error_eta[0, pqpv]])))
+#print(max(abs(np.r_[error_sum[0, pqpv]])))
 
 
 
@@ -562,9 +570,9 @@ bus = 5
 plt.plot(vec_1n[3:len(U)-1], abs(bb[3:len(U)-1, bus]), 'ro ', markersize=2)
 plt.show()
 
-print(abs(bb[-2, :]))
-print(1/max(abs(bb[-2, :])))
-print(1/min(abs(bb[-2, :])))
+#print(abs(bb[-2, :]))
+#print(1/max(abs(bb[-2, :])))
+#print(1/min(abs(bb[-2, :])))
 
 
 # .......................GRÀFIC SIGMA ........................
@@ -588,6 +596,9 @@ plt.show()
 
 
 # ........................EXTRES..............................
-print(Ybus)
-print(Pfi)
-print(Qfi)
+#(Ybus)
+#print(Pfi)
+#print(Qfi)
+
+
+print(abs(U_th[2]))
